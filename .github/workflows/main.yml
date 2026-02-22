@@ -5,28 +5,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build Web Assets
-        run: npm run build --if-present
-
-      - name: Sync Capacitor
-        run: npx cap sync android
+      - name: Install & Build
+        run: |
+          # Ye command check karegi ke index.html kahan chhupi hai
+          FILEPATH=$(find . -name index.html -path "*/public/*" | head -n 1)
+          if [ -z "$FILEPATH" ]; then echo "Error: index.html not found anywhere!"; exit 1; fi
+          
+          # Folder ke andar ghusne ke liye
+          ROOT_DIR=$(echo $FILEPATH | sed 's/\/public\/index.html//')
+          cd $ROOT_DIR
+          
+          npm install --force
+          CI=false npm run build
 
       - name: Build APK
         run: |
-          cd android
+          # Android folder dhoond kar build shuru karein
+          ANDROID_DIR=$(find . -name gradlew -path "*/android/*" | head -n 1 | sed 's/\/gradlew//')
+          cd $ANDROID_DIR
           chmod +x gradlew
           ./gradlew assembleDebug
 
@@ -34,4 +37,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AttendX-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: "**/app-debug.apk"
